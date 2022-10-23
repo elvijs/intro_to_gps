@@ -47,7 +47,7 @@ test_notebooks:
 
 
 freeze_requirements:  # Note the M1 metal workaround in requirements file
-	pip freeze > $(REQUIREMENTS) && sed -i '' 's/tensorflow-macos/tensorflow/g' $(REQUIREMENTS)
+	pip freeze | grep -v "tensorflow-metal" > $(REQUIREMENTS) && sed -i '' 's/tensorflow-macos/tensorflow/g' $(REQUIREMENTS)
 
 
 install_deps:
