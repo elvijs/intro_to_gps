@@ -34,7 +34,6 @@ grpcio==1.50.0
 h5py==3.7.0
 idna==3.4
 iniconfig==1.1.1
--e git+ssh://git@github.com/elvijs/intro_to_gps.git@5684163d0888f5fee2a43b47bb24c29eb3b279ca#egg=Intro_to_GPs
 ipykernel==6.16.1
 ipython==8.5.0
 ipython-genutils==0.2.0
