@@ -27,7 +27,7 @@ setup(
     long_description=readme,
     include_package_data=True,
     name='Intro to GPs',
-    packages=find_packages(include=['code']),
+    packages=['src'],
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/elvijs/intro_to_gps',
