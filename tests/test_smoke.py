@@ -1,6 +1,6 @@
 """Simple smoke tests to alert us to incomplete setup."""
 
-from src.data.load import get_data, REGISTERED_DATASETS
+from src.data.load import REGISTERED_DATASETS, get_data
 
 
 def test_datasets() -> None:

@@ -1,5 +1,5 @@
 REQUIREMENTS="requirements.txt"
-SOURCE_DIR="code"
+SOURCE_DIR="src"
 NOTEBOOKS_DIR="notebooks"
 TESTS_DIR="tests"
 

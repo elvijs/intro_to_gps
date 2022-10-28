@@ -8,7 +8,6 @@ from pathlib import Path
 import pandas as pd
 from scipy.io import loadmat
 
-
 REPO_ROOT = Path(__file__).parent.parent.parent
 DATA_PATH = REPO_ROOT / "data"
 REGISTERED_DATASETS = {
@@ -27,5 +26,5 @@ def get_data(identifier: str) -> pd.DataFrame:
     return df
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print(get_data("mauna").describe())
