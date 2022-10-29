@@ -41,6 +41,7 @@ ipywidgets==8.0.2
 isort==5.10.1
 jedi==0.18.1
 Jinja2==3.1.2
+joblib==1.2.0
 jsonschema==4.16.0
 jupyter==1.0.0
 jupyter-console==6.4.4
@@ -108,6 +109,7 @@ QtPy==2.2.1
 requests==2.28.1
 requests-oauthlib==1.3.1
 rsa==4.9
+scikit-learn==1.1.3
 scipy==1.9.3
 Send2Trash==1.8.0
 six==1.16.0
@@ -122,6 +124,7 @@ tensorflow-estimator==2.10.0
 tensorflow==2.10.0
 termcolor==2.0.1
 terminado==0.16.0
+threadpoolctl==3.1.0
 tinycss2==1.2.1
 tomli==2.0.1
 tornado==6.2

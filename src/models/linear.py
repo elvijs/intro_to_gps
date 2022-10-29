@@ -3,75 +3,84 @@ from typing import Optional
 
 import numpy as np
 import tensorflow as tf
+from sklearn.preprocessing import StandardScaler
 
 
 class LinearRegression:
     """
     A terrible implementation of linear regression.
 
-    y = theta * x + b  (1D theta!!)
+    y = theta * x + b  (scalar theta!!)
     """
 
-    def __init__(self):
-        self._theta: Optional[tf.Variable] = None
-        self._b: Optional[tf.Variable] = None
+    def __init__(self, theta: float = 1., b: float = 0.):
+        self._theta = tf.Variable(
+            initial_value=theta,
+            trainable=True,
+            dtype=tf.float64,
+            name="theta",
+        )
+        self._b = tf.Variable(
+            initial_value=b, trainable=True, dtype=tf.float64, name="b"
+        )
+        self._x_norm = StandardScaler()
+        self._y_norm = StandardScaler()
 
     def fit(
         self,
         x: np.ndarray,
         y: np.ndarray,
-        steps: int = 100,
-        learning_rate: float = 1e-6,
+        steps: int = 1_000,
+        learning_rate: float = 0.1,
+        print_debug_messages: bool = False,
         debug_info_interval: Optional[int] = None,
     ) -> None:
         debug_info_interval = debug_info_interval or steps / 10
 
-        # convert input to tensors
-        xt = tf.constant(x, dtype=tf.float64)
-        yt = tf.constant(y, dtype=tf.float64)
+        # Convert input to tensors and normalise
+        # Note the annoying reshapes and flattens as scikit-learn expects column vectors
+        self._x_norm.fit(x.reshape(-1, 1))
+        self._y_norm.fit(y.reshape(-1, 1))
+        xt = tf.constant(self._x_norm.transform(x.reshape(-1, 1)).flatten(), dtype=tf.float64)
+        yt = tf.constant(self._y_norm.transform(y.reshape(-1, 1)).flatten(), dtype=tf.float64)
         h = tf.constant(learning_rate, dtype=tf.float64)
 
-        # sensible initial values
-        b = tf.Variable(
-            initial_value=y.mean(),
-            trainable=True, dtype=tf.float64, name="b"
-        )
-        self._b = b
-        theta = tf.Variable(
-            initial_value=(y.max() - y.min()) / (x.max() - x.min()),
-            trainable=True,
-            dtype=tf.float64,
-            name="theta",
-        )
-        self._theta = theta
-
         @tf.function
-        def _step(theta_: tf.Tensor, b_: tf.Tensor) -> None:
+        def _step() -> None:
             with tf.GradientTape() as g:
-                y_pred = theta_ * xt + b_
-                loss = tf.sqrt(tf.keras.losses.MSE(y_true=yt, y_pred=y_pred))
+                loss = self._loss(y_true=yt, y_pred=self._predict_normalised(xt))
 
-            gradients = g.gradient(loss, [theta_, b_])
+            vars = [self._theta, self._b]
+            gradients = g.gradient(loss, vars)
 
             # Now apply gradients to the variables
             dl_dtheta, dl_db = gradients
-            theta_.assign_sub(h * dl_dtheta)
-            b_.assign_sub(h * dl_db)
+            self._theta.assign_sub(h * dl_dtheta)
+            self._b.assign_sub(h * dl_db)
 
         for i in range(steps + 1):
-            pred = theta * x + b
-            intermediate_loss = tf.sqrt(tf.keras.losses.MSE(pred, yt))
-            _step(theta, b)
-            if i % debug_info_interval == 0:
-                print(
-                    f"Step {i}. "
-                    f"Loss: {intermediate_loss.numpy()}, "
-                    f"theta: {theta.numpy()}, "
-                    f"b: {b.numpy()}"
-                )
+            intermediate_loss = self._loss(y_pred=self._predict_normalised(xt), y_true=yt)
+            _step()
+            if i % debug_info_interval == 0 and print_debug_messages:
+                print(f"Step {i}")
+                print(self.debug_message())
+                print(f"Loss: {intermediate_loss.numpy()}")
 
-    def predict(self, x: np.ndarray) -> None:
-        return self._theta.numpy() * x + self._b.numpy()
+    def _predict_normalised(self, x: tf.Tensor) -> tf.Tensor:
+        prediction = self._theta * x + self._b
+        return prediction
+
+    @staticmethod
+    def _loss(y_pred: tf.Tensor, y_true: tf.Tensor) -> tf.Tensor:
+        return tf.keras.losses.MSE(y_pred, y_true)
+
+    def debug_message(self) -> str:
+        return f"theta: {self._theta.numpy()}, " f"b: {self._b.numpy()}"
+
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        x_n = self._x_norm.transform(x.reshape(-1, 1))
+        y_n = self._theta.numpy() * x_n + self._b.numpy()
+        return self._y_norm.inverse_transform(y_n).flatten()
 
 
 if __name__ == "__main__":
@@ -81,11 +90,9 @@ if __name__ == "__main__":
         [], "GPU"
     )  # Ignore GPU - only needed on crappy laptops like mine :(
 
-    df = get_data("solar")
+    df = get_data("mauna")
     df.reset_index(inplace=True)
-    linreg = LinearRegression()
-    linreg.fit(x=df["x"], y=df["y"], steps=1_000, learning_rate=1e-8)
-
-    df["preds"] = linreg.predict(df["x"])
-    print(df)
-
+    linreg = LinearRegression(theta=10, b=10)
+    linreg.fit(x=df["x"].values, y=df["y"].values)
+    preds = linreg.predict(df["x"].values)
+    print(f"Learned params (normalised), theta: {linreg._theta.numpy()}, b: {linreg._b.numpy()}")
