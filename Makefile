@@ -30,7 +30,7 @@ static_checks: mypy flake8
 
 
 mypy:
-	mypy $(SOURCE_DIR) $(TESTS_DIR)
+	mypy --ignore-missing-imports $(SOURCE_DIR) $(TESTS_DIR)
 
 flake8:
 	flake8 $(SOURCE_DIR) $(TESTS_DIR)

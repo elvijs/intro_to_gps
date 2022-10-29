@@ -31,7 +31,11 @@ def test_linear_regression__is_not_smoking(data) -> None:
             np.array([0, 1]),
             np.array([0, 1]),
         ),  # corresponds to theta=1, b=0
-        (np.array([0, 1, 2]), np.array([1, 2, 3]), np.array([1, 2, 3])),  # theta=1, b=1
+        (
+            np.array([0, 1, 2]),
+            np.array([1, 2, 3]),
+            np.array([1, 2, 3]),
+        ),  # theta=1, b=1
         (
             np.array([0, 1, 2]),
             np.array([1 - 0.1, 2 + 0.2, 3 - 0.1]),

@@ -1,7 +1,9 @@
 """
 A trivial loader for dummy datasets.
 
-Source: https://github.com/jamesrobertlloyd/gp-structure-search/tree/master/data/1d_data
+Source:
+https://github.com/jamesrobertlloyd/gp-structure-search/tree
+/master/data/1d_data
 """
 from pathlib import Path
 

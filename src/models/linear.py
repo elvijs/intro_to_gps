@@ -1,4 +1,7 @@
-"""A silly TF implementation of the linear model that conforms to the fit-predict interface."""
+"""
+A silly TF implementation of the linear model that
+conforms to the fit-predict interface.
+"""
 from typing import Optional
 
 import numpy as np
@@ -13,7 +16,7 @@ class LinearRegression:
     y = theta * x + b  (scalar theta!!)
     """
 
-    def __init__(self, theta: float = 1., b: float = 0.):
+    def __init__(self, theta: float = 1.0, b: float = 0.0):
         self._theta = tf.Variable(
             initial_value=theta,
             trainable=True,
@@ -35,20 +38,29 @@ class LinearRegression:
         print_debug_messages: bool = False,
         debug_info_interval: Optional[int] = None,
     ) -> None:
-        debug_info_interval = debug_info_interval or steps / 10
+        debug_info_interval_: int = debug_info_interval or steps // 10
 
         # Convert input to tensors and normalise
-        # Note the annoying reshapes and flattens as scikit-learn expects column vectors
+        # Note the annoying reshapes and flattens as
+        # scikit-learn expects column vectors
         self._x_norm.fit(x.reshape(-1, 1))
         self._y_norm.fit(y.reshape(-1, 1))
-        xt = tf.constant(self._x_norm.transform(x.reshape(-1, 1)).flatten(), dtype=tf.float64)
-        yt = tf.constant(self._y_norm.transform(y.reshape(-1, 1)).flatten(), dtype=tf.float64)
+        xt = tf.constant(
+            self._x_norm.transform(x.reshape(-1, 1)).flatten(),
+            dtype=tf.float64
+        )
+        yt = tf.constant(
+            self._y_norm.transform(y.reshape(-1, 1)).flatten(),
+            dtype=tf.float64
+        )
         h = tf.constant(learning_rate, dtype=tf.float64)
 
         @tf.function
         def _step() -> None:
             with tf.GradientTape() as g:
-                loss = self._loss(y_true=yt, y_pred=self._predict_normalised(xt))
+                loss = self._loss(
+                    y_true=yt, y_pred=self._predict_normalised(xt)
+                )
 
             vars = [self._theta, self._b]
             gradients = g.gradient(loss, vars)
@@ -59,9 +71,11 @@ class LinearRegression:
             self._b.assign_sub(h * dl_db)
 
         for i in range(steps + 1):
-            intermediate_loss = self._loss(y_pred=self._predict_normalised(xt), y_true=yt)
+            intermediate_loss = self._loss(
+                y_pred=self._predict_normalised(xt), y_true=yt
+            )
             _step()
-            if i % debug_info_interval == 0 and print_debug_messages:
+            if i % debug_info_interval_ == 0 and print_debug_messages:
                 print(f"Step {i}")
                 print(self.debug_message())
                 print(f"Loss: {intermediate_loss.numpy()}")
@@ -95,4 +109,8 @@ if __name__ == "__main__":
     linreg = LinearRegression(theta=10, b=10)
     linreg.fit(x=df["x"].values, y=df["y"].values)
     preds = linreg.predict(df["x"].values)
-    print(f"Learned params (normalised), theta: {linreg._theta.numpy()}, b: {linreg._b.numpy()}")
+    print(
+        f"Learned params (normalised), "
+        f"theta: {linreg._theta.numpy()}, "
+        f"b: {linreg._b.numpy()}"
+    )
