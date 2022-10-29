@@ -62,8 +62,8 @@ class LinearRegression:
                     y_true=yt, y_pred=self._predict_normalised(xt)
                 )
 
-            vars = [self._theta, self._b]
-            gradients = g.gradient(loss, vars)
+            variables = [self._theta, self._b]
+            gradients = g.gradient(loss, variables)
 
             # Now apply gradients to the variables
             dl_dtheta, dl_db = gradients
