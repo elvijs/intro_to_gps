@@ -46,12 +46,10 @@ class LinearRegression:
         self._x_norm.fit(x.reshape(-1, 1))
         self._y_norm.fit(y.reshape(-1, 1))
         xt = tf.constant(
-            self._x_norm.transform(x.reshape(-1, 1)).flatten(),
-            dtype=tf.float64
+            self._x_norm.transform(x.reshape(-1, 1)).flatten(), dtype=tf.float64
         )
         yt = tf.constant(
-            self._y_norm.transform(y.reshape(-1, 1)).flatten(),
-            dtype=tf.float64
+            self._y_norm.transform(y.reshape(-1, 1)).flatten(), dtype=tf.float64
         )
         h = tf.constant(learning_rate, dtype=tf.float64)
 
