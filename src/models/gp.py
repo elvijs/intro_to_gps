@@ -1,5 +1,5 @@
 """The simplest possible Gaussian Process."""
-from typing import Optional, NewType, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -20,7 +20,8 @@ class GP:
     * noise-free observations,
     * single input dimension, single output dimension.
     """
-    def __init__(self, lengthscale: float = 1., s: float = .1) -> None:
+
+    def __init__(self, lengthscale: float = 1.0, s: float = 0.1) -> None:
         """
         Define the learned parameters
         """
@@ -69,7 +70,8 @@ class GP:
 
             gradients = g.gradient(loss, self._trainable_variables)
 
-            # Now apply gradients to the variables - simplest possible optimiser
+            # Now apply gradients to the variables -
+            # simplest possible optimiser
             for grad, variable in zip(gradients, self._trainable_variables):
                 variable.assign_sub(h * grad)
 
@@ -112,8 +114,8 @@ class GP:
         # the inner product using the Cholesky decomposition of K(x, x; w).
         inv_k = tf.linalg.inv(k)
         inner_prod_term = tf.linalg.matmul(
-            a=y-m,
-            b=tf.linalg.matmul(inv_k, y-m),
+            a=y - m,
+            b=tf.linalg.matmul(inv_k, y - m),
             transpose_a=True,
         )
         double_log_likelihood = tf.math.log(det_k) + inner_prod_term
@@ -132,7 +134,9 @@ class GP:
         m, cov = self._conditional_distribution_at(x)
         return m
 
-    def _conditional_distribution_at(self, x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    def _conditional_distribution_at(
+        self, x: tf.Tensor
+    ) -> Tuple[tf.Tensor, tf.Tensor]:
         """
         Return the conditional distribution p(y, x| xt, yt).
         It is a MVN distribution, so characterised by the mean and covariance,
@@ -187,7 +191,7 @@ class GP:
         x2_col = tf.reshape(x2, (m, 1))
         x1_x2_vectors = x1_row - x2_col
         distances_squared = tf.math.square(x1_x2_vectors)
-        cov = self._s * tf.math.exp(-distances_squared/(2*self._l**2))
+        cov = self._s * tf.math.exp(-distances_squared / (2 * self._l**2))
         return cov
 
 
