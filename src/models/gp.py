@@ -1,8 +1,12 @@
 """The simplest possible Gaussian Process."""
-from typing import Optional, Tuple
+from typing import Optional, Tuple, NewType
 
 import numpy as np
 import tensorflow as tf
+
+
+ColumnVector = NewType("ColumnVector", np.ndarray)  # Shape (n, 1)
+ColumnTensor = NewType("ColumnTensor", tf.Tensor)  # Shape (n, 1)
 
 
 class GP:
@@ -40,13 +44,13 @@ class GP:
         )
         self._trainable_variables = [self._l, self._s]
 
-        self._xt: tf.Tensor = tf.constant(float("nan"), dtype=tf.float64)
-        self._yt: tf.Tensor = tf.constant(float("nan"), dtype=tf.float64)
+        self._xt: ColumnTensor = tf.constant(float("nan"), dtype=tf.float64)
+        self._yt: ColumnTensor = tf.constant(float("nan"), dtype=tf.float64)
 
     def fit(
         self,
-        x: np.ndarray,
-        y: np.ndarray,
+        x: ColumnVector,
+        y: ColumnVector,
         steps: int = 1_000,
         learning_rate: float = 0.1,
         print_debug_messages: bool = False,
@@ -83,7 +87,7 @@ class GP:
                 print(self.debug_message())
                 print(f"Loss: {intermediate_loss.numpy()}")
 
-    def _loss(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+    def _loss(self, x: ColumnTensor, y: ColumnTensor) -> tf.Tensor:
         """
         Maximise the likelihood estimate.
 
@@ -127,16 +131,16 @@ class GP:
             ret += f"{var.name}: {var.numpy()}\n"
         return ret
 
-    def _predict(self, x: tf.Tensor) -> tf.Tensor:
+    def _predict(self, x_new: ColumnTensor) -> ColumnTensor:
         """
         Predict the mean of the distribution at x.
         """
-        m, cov = self._conditional_distribution_at(x)
+        m, cov = self._conditional_distribution_at(x_new)
         return m
 
     def _conditional_distribution_at(
-        self, x: tf.Tensor
-    ) -> Tuple[tf.Tensor, tf.Tensor]:
+        self, x_new: ColumnTensor
+    ) -> Tuple[ColumnTensor, ColumnTensor]:
         """
         Return the conditional distribution p(y, x| xt, yt).
         It is a MVN distribution, so characterised by the mean and covariance,
@@ -156,41 +160,43 @@ class GP:
         Kp := K(x, x) - k_ * K(xt, xt)^{-1} * (k_^T).
         """
         xt, yt = self._xt, self._yt
-        k_ = self.cov(x, xt)
+        k_ = self.cov(x_new, xt)
         kk = self.cov(xt, xt)
+        # NOTE: the following is slow and bad.
+        # For real applications you should simplify
+        # the inner product using the Cholesky decomposition of K(x, x; w).
+        # TODO: add the caching of inv_kk
         inv_kk = tf.linalg.inv(kk)
         k_inv_kk = tf.linalg.matmul(a=k_, b=inv_kk, transpose_a=True)
-        mp = self.m(x) + tf.linalg.matmul(k_inv_kk, yt - self.m(xt))
+        mp = self.m(x_new) + tf.linalg.matmul(k_inv_kk, yt - self.m(xt))
         kp = kk - tf.linalg.matmul(a=k_inv_kk, b=k_, transpose_b=True)
         return mp, kp
 
-    def predict(self, x: np.ndarray) -> np.ndarray:
-        xt = tf.constant(x, dtype=tf.float64)
-        m = self._predict(xt)
+    def predict(self, x_new: ColumnVector) -> np.ndarray:
+        """Return the mean of the distribution at x_new"""
+        x_new_t = tf.constant(x_new, dtype=tf.float64)
+        m = self._predict(x_new_t)
         return m.numpy()
 
-    def m(self, x: tf.Tensor) -> tf.Tensor:
+    def m(self, x: ColumnTensor) -> ColumnTensor:
         """The mean function. Current implementation: 0."""
         return tf.zeros_like(x)
 
-    def cov(self, x1: tf.Tensor, x2: tf.Tensor) -> tf.Tensor:
+    def cov(self, x1: ColumnTensor, x2: ColumnTensor) -> tf.Tensor:
         """
         The covariance function.
         Current implementation: squared exponential.
-        cov(x1, x2) = s * e^(-|x1 - x2|^2/(2*l^2))
+        cov(x1, x2)_{i, j} = s * e^(-|x1_i - x2_j|^2/(2*l^2))
 
-        Expects inputs of shape (n,) and (m,).
+        Expects inputs of shape (n, 1) and (m, 1).
         Returns a covariance matrix of shape (n, m).
         """
-        assert x1.shape.rank == 1
+        assert x1.shape.rank == 2
         n = x1.shape.as_list()[0]
-        assert x2.shape.rank == 1
-        m = x2.shape.as_list()[0]
 
         x1_row = tf.reshape(x1, (1, n))
-        x2_col = tf.reshape(x2, (m, 1))
-        x1_x2_vectors = x1_row - x2_col
-        distances_squared = tf.math.square(x1_x2_vectors)
+        kronecker_diff = x1_row - x2  # Shape (n, m)
+        distances_squared = tf.math.square(kronecker_diff)
         cov = self._s * tf.math.exp(-distances_squared / (2 * self._l**2))
         return cov
 
@@ -205,6 +211,7 @@ if __name__ == "__main__":
     df = get_data("solar")
     df.reset_index(inplace=True)
     gp = GP()
-    gp.fit(x=df["x"].values, y=df["y"].values)
-    preds = gp.predict(df["x"].values)
+    x, y = df["x"].values.reshape(-1, 1), df["y"].values.reshape(-1, 1)
+    gp.fit(x=x, y=y)
+    preds = gp.predict(x)
     print(f"Learned params (normalised): {gp.debug_message()}")
