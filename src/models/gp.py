@@ -67,7 +67,7 @@ class GP:
         self._xt = xt
         self._yt = yt
 
-        @tf.function
+        # @tf.function
         def _step() -> None:
             with tf.GradientTape() as g:
                 loss = self._loss(xt, yt)
@@ -77,7 +77,8 @@ class GP:
             # Now apply gradients to the variables -
             # simplest possible optimiser
             for grad, variable in zip(gradients, self._trainable_variables):
-                variable.assign_sub(h * grad)
+                gradient_update = h * grad
+                variable.assign_sub(gradient_update)
 
         for i in range(steps + 1):
             intermediate_loss = self._loss(xt, yt)
@@ -122,7 +123,8 @@ class GP:
             b=tf.linalg.matmul(inv_k, y - m),
             transpose_a=True,
         )
-        double_log_likelihood = tf.math.log(det_k) + inner_prod_term
+        min_det = 1e-6
+        double_log_likelihood = tf.math.log(det_k + min_det) + inner_prod_term
         return double_log_likelihood
 
     def debug_message(self) -> str:
@@ -194,10 +196,15 @@ class GP:
         assert x1.shape.rank == 2
         n = x1.shape.as_list()[0]
 
+        def positive_bij(x_: tf.Tensor) -> tf.Tensor:
+            return tf.math.softplus(x_)
+
         x1_row = tf.reshape(x1, (1, n))
         kronecker_diff = x1_row - x2  # Shape (n, m)
         distances_squared = tf.math.square(kronecker_diff)
-        cov = self._s * tf.math.exp(-distances_squared / (2 * self._l**2))
+        sd = positive_bij(self._s)
+        lengthscale_squared = positive_bij(self._l)**2
+        cov = sd * tf.math.exp(-distances_squared / (2 * lengthscale_squared))
         return cov
 
 
@@ -212,6 +219,6 @@ if __name__ == "__main__":
     df.reset_index(inplace=True)
     gp = GP()
     x, y = df["x"].values.reshape(-1, 1), df["y"].values.reshape(-1, 1)
-    gp.fit(x=x, y=y)
+    gp.fit(x=x, y=y, learning_rate=1e-9)
     preds = gp.predict(x)
     print(f"Learned params (normalised): {gp.debug_message()}")
