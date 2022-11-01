@@ -1,12 +1,11 @@
 """The simplest possible Gaussian Process."""
-from typing import Optional, Tuple, NewType
+from typing import NewType, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
 
-
 ColumnVector = NewType("ColumnVector", np.ndarray)  # Shape (n, 1)
-ColumnTensor = NewType("ColumnTensor", tf.Tensor)  # Shape (n, 1)
+ColumnTensor = NewType("ColumnTensor", tf.Tensor)  # type: ignore  # (n, 1)
 
 
 class GP:
@@ -203,7 +202,7 @@ class GP:
         kronecker_diff = x1_row - x2  # Shape (n, m)
         distances_squared = tf.math.square(kronecker_diff)
         sd = positive_bij(self._s)
-        lengthscale_squared = positive_bij(self._l)**2
+        lengthscale_squared = positive_bij(self._l) ** 2
         cov = sd * tf.math.exp(-distances_squared / (2 * lengthscale_squared))
         return cov
 
