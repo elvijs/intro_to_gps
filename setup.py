@@ -12,7 +12,7 @@ test_requirements = ["pytest", ]
 setup(
     author="Elvijs Sarkans",
     author_email='elvijs.sarkans@gmail.com',
-    python_requires='>=3.10',
+    python_requires='>=3.9',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
