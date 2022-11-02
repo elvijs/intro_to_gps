@@ -120,7 +120,7 @@ class GP:
         m = self.m(x)  # the params w are implicit in m
         det_kk = tf.linalg.det(kk)
 
-        chol_kk = tf.linalg.cholesky(kk)  # TODO: implement
+        # chol_kk = tf.linalg.cholesky(kk)  # TODO: implement
         # NOTE: the following is slow and bad.
         # For real applications you should simplify
         # the inner product using the Cholesky decomposition of K(x, x; w).
@@ -178,12 +178,16 @@ class GP:
         chol_kk = tf.linalg.cholesky(kk)
         inv_chol_kk = tf.linalg.inv(chol_kk)
 
-        k_inv_chol_kkt = tf.linalg.matmul(a=k_, b=inv_chol_kk, transpose_b=True)
+        k_inv_chol_kkt = tf.linalg.matmul(
+            a=k_, b=inv_chol_kk, transpose_b=True
+        )
         inv_chol_kk_y_m = tf.linalg.matmul(inv_chol_kk, yt - self.m(xt))
 
         m_update = tf.linalg.matmul(k_inv_chol_kkt, inv_chol_kk_y_m)
         mp = self.m(x_new) + m_update
-        kp = kk_new - tf.linalg.matmul(a=k_inv_chol_kkt, b=k_inv_chol_kkt, transpose_b=True)
+        kp = kk_new - tf.linalg.matmul(
+            a=k_inv_chol_kkt, b=k_inv_chol_kkt, transpose_b=True
+        )
         return mp, kp
 
     def conditional_distribution_at(
