@@ -55,7 +55,7 @@ class GP:
         print_debug_messages: bool = False,
         debug_info_interval: Optional[int] = None,
     ) -> None:
-        debug_info_interval_: int = debug_info_interval or steps // 10
+        debug_info_interval_: int = debug_info_interval if debug_info_interval else steps // 10 if steps > 9 else 1
 
         # Convert input to tensors
         xt = tf.constant(x, dtype=tf.float64)
@@ -79,7 +79,7 @@ class GP:
                 gradient_update = h * grad
                 variable.assign_sub(gradient_update)
 
-        for i in range(steps + 1):
+        for i in range(steps):
             intermediate_loss = self._loss(xt, yt)
             _step()
             if i % debug_info_interval_ == 0 and print_debug_messages:
@@ -163,15 +163,28 @@ class GP:
         xt, yt = self._xt, self._yt
         k_ = self.cov(x_new, xt)
         kk = self.cov(xt, xt)
+        kk_new = self.cov(x_new, x_new)
         # NOTE: the following is slow and bad.
         # For real applications you should simplify
         # the inner product using the Cholesky decomposition of K(x, x; w).
         # TODO: add the caching of inv_kk
         inv_kk = tf.linalg.inv(kk)
-        k_inv_kk = tf.linalg.matmul(a=k_, b=inv_kk, transpose_a=True)
+        k_inv_kk = tf.linalg.matmul(a=k_, b=inv_kk)
         mp = self.m(x_new) + tf.linalg.matmul(k_inv_kk, yt - self.m(xt))
-        kp = kk - tf.linalg.matmul(a=k_inv_kk, b=k_, transpose_b=True)
+        kp = kk_new - tf.linalg.matmul(a=k_inv_kk, b=k_, transpose_b=True)
         return mp, kp
+
+    def conditional_distribution_at(
+            self, x_new: ColumnVector
+    ) -> Tuple[ColumnVector, ColumnVector]:
+        """
+        Return the conditional distribution p(y(x_new)| y_seen(x_sampled)).
+        It is a MVN distribution, so characterised by the mean and covariance,
+        which we return here.
+        """
+        x_new_t = tf.constant(x_new, dtype=tf.float64)
+        m, cov = self._conditional_distribution_at(x_new_t)
+        return m.numpy(), cov.numpy()
 
     def predict(self, x_new: ColumnVector) -> np.ndarray:
         """Return the mean of the distribution at x_new"""
@@ -192,14 +205,14 @@ class GP:
         Expects inputs of shape (n, 1) and (m, 1).
         Returns a covariance matrix of shape (n, m).
         """
-        assert x1.shape.rank == 2
-        n = x1.shape.as_list()[0]
+        assert x2.shape.rank == 2
+        m = x2.shape.as_list()[0]
 
         def positive_bij(x_: tf.Tensor) -> tf.Tensor:
             return tf.math.softplus(x_)
 
-        x1_row = tf.reshape(x1, (1, n))
-        kronecker_diff = x1_row - x2  # Shape (n, m)
+        x2_row = tf.reshape(x2, (1, m))
+        kronecker_diff = x1 - x2_row  # Shape (n, m)
         distances_squared = tf.math.square(kronecker_diff)
         sd = positive_bij(self._s)
         lengthscale_squared = positive_bij(self._l) ** 2
@@ -218,6 +231,11 @@ if __name__ == "__main__":
     df.reset_index(inplace=True)
     gp = GP()
     x, y = df["x"].values.reshape(-1, 1), df["y"].values.reshape(-1, 1)
-    gp.fit(x=x, y=y, learning_rate=1e-9)
+    gp.fit(x=x, y=y, learning_rate=1e-9, steps=1)
     preds = gp.predict(x)
     print(f"Learned params (normalised): {gp.debug_message()}")
+
+    gp_partial = GP()
+    x_p, y_p = x[::2], y[::2]
+    gp_partial.fit(x=x_p, y=y_p, steps=0)
+    preds_p = gp_partial.predict(x)
