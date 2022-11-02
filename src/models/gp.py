@@ -55,7 +55,13 @@ class GP:
         print_debug_messages: bool = False,
         debug_info_interval: Optional[int] = None,
     ) -> None:
-        debug_info_interval_: int = debug_info_interval if debug_info_interval else steps // 10 if steps > 9 else 1
+        debug_info_interval_: int = (
+            debug_info_interval
+            if debug_info_interval
+            else steps // 10
+            if steps > 9
+            else 1
+        )
 
         # Convert input to tensors
         xt = tf.constant(x, dtype=tf.float64)
@@ -175,7 +181,7 @@ class GP:
         return mp, kp
 
     def conditional_distribution_at(
-            self, x_new: ColumnVector
+        self, x_new: ColumnVector
     ) -> Tuple[ColumnVector, ColumnVector]:
         """
         Return the conditional distribution p(y(x_new)| y_seen(x_sampled)).
@@ -231,11 +237,12 @@ if __name__ == "__main__":
     df.reset_index(inplace=True)
     gp = GP()
     x, y = df["x"].values.reshape(-1, 1), df["y"].values.reshape(-1, 1)
-    gp.fit(x=x, y=y, learning_rate=1e-9, steps=1)
-    preds = gp.predict(x)
-    print(f"Learned params (normalised): {gp.debug_message()}")
 
-    gp_partial = GP()
+    # gp.fit(x=x, y=y, learning_rate=1e-9, steps=1)
+    # preds = gp.predict(x)
+    # print(f"Learned params (normalised): {gp.debug_message()}")
+
+    gp_partial = GP(s=10000)
     x_p, y_p = x[::2], y[::2]
     gp_partial.fit(x=x_p, y=y_p, steps=0)
     preds_p = gp_partial.predict(x)
