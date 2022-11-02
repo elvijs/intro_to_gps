@@ -116,20 +116,22 @@ class GP:
         log(det(K(x, x; w)))/2 + (y-m(x; w))^T K(x, x; w)^{-1} (y-m(x; w))/2
         with respect to parameters w.
         """
-        k = self.cov(x, x)  # the params w are implicit in k
+        kk = self.cov(x, x)  # the params w are implicit in k
         m = self.m(x)  # the params w are implicit in m
-        det_k = tf.linalg.det(k)
+        det_kk = tf.linalg.det(kk)
+
+        chol_kk = tf.linalg.cholesky(kk)  # TODO: implement
         # NOTE: the following is slow and bad.
         # For real applications you should simplify
         # the inner product using the Cholesky decomposition of K(x, x; w).
-        inv_k = tf.linalg.inv(k)
+        inv_k = tf.linalg.inv(kk)
         inner_prod_term = tf.linalg.matmul(
             a=y - m,
             b=tf.linalg.matmul(inv_k, y - m),
             transpose_a=True,
         )
         min_det = 1e-6
-        double_log_likelihood = tf.math.log(det_k + min_det) + inner_prod_term
+        double_log_likelihood = tf.math.log(det_kk + min_det) + inner_prod_term
         return double_log_likelihood
 
     def debug_message(self) -> str:
@@ -170,14 +172,18 @@ class GP:
         k_ = self.cov(x_new, xt)
         kk = self.cov(xt, xt)
         kk_new = self.cov(x_new, x_new)
-        # NOTE: the following is slow and bad.
-        # For real applications you should simplify
-        # the inner product using the Cholesky decomposition of K(x, x; w).
-        # TODO: add the caching of inv_kk
-        inv_kk = tf.linalg.inv(kk)
-        k_inv_kk = tf.linalg.matmul(a=k_, b=inv_kk)
-        mp = self.m(x_new) + tf.linalg.matmul(k_inv_kk, yt - self.m(xt))
-        kp = kk_new - tf.linalg.matmul(a=k_inv_kk, b=k_, transpose_b=True)
+
+        # The matrix inversion is numerically unstable,
+        # so let's work with Cholesky decomp instead
+        chol_kk = tf.linalg.cholesky(kk)
+        inv_chol_kk = tf.linalg.inv(chol_kk)
+
+        k_inv_chol_kkt = tf.linalg.matmul(a=k_, b=inv_chol_kk, transpose_b=True)
+        inv_chol_kk_y_m = tf.linalg.matmul(inv_chol_kk, yt - self.m(xt))
+
+        m_update = tf.linalg.matmul(k_inv_chol_kkt, inv_chol_kk_y_m)
+        mp = self.m(x_new) + m_update
+        kp = kk_new - tf.linalg.matmul(a=k_inv_chol_kkt, b=k_inv_chol_kkt, transpose_b=True)
         return mp, kp
 
     def conditional_distribution_at(
