@@ -44,8 +44,6 @@ class LinearRegression:
         debug_info_interval_: int = debug_info_interval or steps // 10
 
         # Convert input to tensors and normalise
-        # Note the annoying reshapes and flattens as
-        # scikit-learn expects column vectors
         self._x_norm.fit(x)
         self._y_norm.fit(y)
         xt = tf.constant(
@@ -58,7 +56,7 @@ class LinearRegression:
         )
         h = tf.constant(learning_rate, dtype=tf.float64)
 
-        # @tf.function
+        @tf.function
         def _step() -> None:
             with tf.GradientTape() as g:
                 loss = self._loss(
@@ -95,9 +93,9 @@ class LinearRegression:
         return f"theta: {self._theta.numpy()}, " f"b: {self._b.numpy()}"
 
     def predict(self, x: ColumnVector) -> ColumnVector:
-        x_n = self._x_norm.transform(x.reshape(-1, 1))
+        x_n = self._x_norm.transform(x)
         y_n = self._theta.numpy() * x_n + self._b.numpy()
-        return self._y_norm.inverse_transform(y_n).flatten()
+        return self._y_norm.inverse_transform(y_n)
 
 
 if __name__ == "__main__":
