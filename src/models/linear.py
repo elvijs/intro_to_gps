@@ -2,11 +2,14 @@
 A silly TF implementation of the linear model that
 conforms to the fit-predict interface.
 """
-from typing import Optional
+from typing import NewType, Optional
 
 import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
+
+ColumnVector = NewType("ColumnVector", np.ndarray)  # Shape (n, 1)
+ColumnTensor = NewType("ColumnTensor", tf.Tensor)  # type: ignore  # (n, 1)
 
 
 class LinearRegression:
@@ -31,8 +34,8 @@ class LinearRegression:
 
     def fit(
         self,
-        x: np.ndarray,
-        y: np.ndarray,
+        x: ColumnVector,
+        y: ColumnVector,
         steps: int = 1_000,
         learning_rate: float = 0.1,
         print_debug_messages: bool = False,
@@ -43,19 +46,19 @@ class LinearRegression:
         # Convert input to tensors and normalise
         # Note the annoying reshapes and flattens as
         # scikit-learn expects column vectors
-        self._x_norm.fit(x.reshape(-1, 1))
-        self._y_norm.fit(y.reshape(-1, 1))
+        self._x_norm.fit(x)
+        self._y_norm.fit(y)
         xt = tf.constant(
-            self._x_norm.transform(x.reshape(-1, 1)).flatten(),
+            self._x_norm.transform(x),
             dtype=tf.float64,
         )
         yt = tf.constant(
-            self._y_norm.transform(y.reshape(-1, 1)).flatten(),
+            self._y_norm.transform(y),
             dtype=tf.float64,
         )
         h = tf.constant(learning_rate, dtype=tf.float64)
 
-        @tf.function
+        # @tf.function
         def _step() -> None:
             with tf.GradientTape() as g:
                 loss = self._loss(
@@ -91,7 +94,7 @@ class LinearRegression:
     def debug_message(self) -> str:
         return f"theta: {self._theta.numpy()}, " f"b: {self._b.numpy()}"
 
-    def predict(self, x: np.ndarray) -> np.ndarray:
+    def predict(self, x: ColumnVector) -> ColumnVector:
         x_n = self._x_norm.transform(x.reshape(-1, 1))
         y_n = self._theta.numpy() * x_n + self._b.numpy()
         return self._y_norm.inverse_transform(y_n).flatten()
@@ -106,9 +109,11 @@ if __name__ == "__main__":
 
     df = get_data("mauna")
     df.reset_index(inplace=True)
+    x, y = df["x"].values.reshape(-1, 1), df["y"].values.reshape(-1, 1)
+
     linreg = LinearRegression(theta=10, b=10)
-    linreg.fit(x=df["x"].values, y=df["y"].values)
-    preds = linreg.predict(df["x"].values)
+    linreg.fit(x=x, y=y, learning_rate=1e-5)
+    preds = linreg.predict(x)
     print(
         f"Learned params (normalised), "
         f"theta: {linreg._theta.numpy()}, "
