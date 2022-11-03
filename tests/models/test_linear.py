@@ -17,9 +17,10 @@ def _data(request) -> pd.DataFrame:
 
 def test_linear_regression__is_not_smoking(data) -> None:
     model = LinearRegression()
-    model.fit(data["x"].values, data["y"].values)
-    preds = model.predict(data["x"].values)
-    mean_error = np.mean(np.abs(preds - data["y"]))
+    x, y = data["x"].values.reshape(-1, 1), data["y"].values.reshape(-1, 1)
+    model.fit(x, y, learning_rate=1e-4)
+    preds = model.predict(x)
+    mean_error = np.mean(np.abs(preds - y))
     assert mean_error < 40  # high mean error, this data isn't linear
 
 
@@ -27,19 +28,19 @@ def test_linear_regression__is_not_smoking(data) -> None:
     "x, y, expected_y",
     [
         (
-            np.array([0, 1]),
-            np.array([0, 1]),
-            np.array([0, 1]),
+            np.array([[0], [1]]),
+            np.array([[0], [1]]),
+            np.array([[0], [1]]),
         ),  # corresponds to theta=1, b=0
         (
-            np.array([0, 1, 2]),
-            np.array([1, 2, 3]),
-            np.array([1, 2, 3]),
+            np.array([[0], [1], [2]]),
+            np.array([[1], [2], [3]]),
+            np.array([[1], [2], [3]]),
         ),  # theta=1, b=1
         (
-            np.array([0, 1, 2]),
-            np.array([1 - 0.1, 2 + 0.2, 3 - 0.1]),
-            np.array([1, 2, 3]),
+            np.array([[0], [1], [2]]),
+            np.array([[1 - 0.1], [2 + 0.2], [3 - 0.1]]),
+            np.array([[1], [2], [3]]),
         ),  # theta~=1, b~=1, but with noise
     ],
 )
