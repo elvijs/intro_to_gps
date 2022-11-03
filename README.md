@@ -1,7 +1,9 @@
 # intro_to_gps
 
 Welcome! This repo contains some accompanying material for 
-an introductory talk on Gaussian Processes.  
+an introductory talk on Gaussian Processes.
+
+See the accompanying whiteboard notes in `Whiteboard.pdf`.
 
 
 ## Setup
